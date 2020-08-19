@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">e-kittens</string>
+    <string name="main_btn_refresh">New kitten!</string>
+</resources>
