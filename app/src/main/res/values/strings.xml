@@ -1,4 +1,5 @@
 <resources>
-    <string name="app_name">e-kittens</string>
-    <string name="main_btn_refresh">New kitten!</string>
+    <string name="app_name">/e/ kittens</string>
+    <string name="main_btn_refresh">More view!</string>
+    <string name="network_error">Network unavailable</string>
 </resources>

@@ -1,147 +1,86 @@
 package com.hoodbrains.ekittens
 
 import android.os.Bundle
-import android.util.Log
-import android.view.View
+import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
+import com.google.android.material.snackbar.Snackbar
 import com.hoodbrains.ekittens.databinding.ActivityMainBinding
-
-import java.io.IOException
-import com.squareup.picasso.*
 import com.squareup.picasso.Callback
-import okhttp3.*
-import okhttp3.Cache
-import okhttp3.Request
-import java.util.concurrent.TimeUnit
+import com.squareup.picasso.MemoryPolicy
+import com.squareup.picasso.NetworkPolicy
+import com.squareup.picasso.Picasso
+import java.lang.Exception
+
 
 class MainActivity : AppCompatActivity() {
 
     lateinit var binding: ActivityMainBinding
+    lateinit var viewModel: MainViewModel
 
-
-//    lateinit var picasso: Picasso
+    lateinit var picasso: Picasso
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
-        binding.view = this
 
-        initPicassoWithDiskCache(this)
-//
-//
-//        val interceptor: Interceptor = object : Interceptor {
-//            @Throws(IOException::class)
-//            override fun intercept(chain: Interceptor.Chain): Response? {
-////                var request: Request = chain.request()
-////                val builder: Request.Builder =
-////                    request.newBuilder().addHeader("Cache-Control", "max-age=${60 * 60 * 24 * 365}")
-////                request = builder.build()
-////                return chain.proceed(request)
-//
-//                val response = chain.proceed(chain.request())
-//                Log.e("response header", response.header("Cache-Control"))
-//                val builder: Response.Builder = response.newBuilder()
-//                    .removeHeader("Cache-Control")
-//                    .addHeader("Cache-Control", "public, max-stale=${60 * 60 * 24 * 365}")
-//
-//                return builder.build()
-//
-//            }
-//        }
-//
-//
-//        val provideOfflineCacheInterceptor: Interceptor = object: Interceptor {
-//            override fun intercept(chain: Interceptor.Chain): Response? {
-//                try {
-//                    return chain.proceed(chain.request())
-//                } catch (e: Exception) {
-//                    Log.e("provideOfflineCache", "toto")
-//                    val cacheControl = CacheControl.Builder()
-//                            .onlyIfCached()
-//                            .maxStale(1, TimeUnit.DAYS)
-//                            .build();
-//
-//                        val offlineRequest = chain.request().newBuilder()
-//                            .cacheControl(cacheControl)
-//                            .build();
-//                        return chain.proceed(offlineRequest);
-//                    }
-//                }
-//            }
-//
-//        val mClient = OkHttpClient.Builder()
-//            .addNetworkInterceptor(interceptor)
-////            .addInterceptor(provideOfflineCacheInterceptor)
-//            .cache(Cache(getCacheDir(), 10 * 1024 * 1024))
-//            .build()
-//
-//
-//        val imageBuilder = Picasso.Builder(this.applicationContext)
-//            .loggingEnabled(true)
-//            .downloader(OkHttp3Downloader(mClient))
-//            .listener { _, uri, exception ->
-//                // --> displayed
-//                Log.e("toto", "Failed to load image: ${uri.path} because of ${exception.message}")
-//            }
-//
-//            picasso = imageBuilder.build()
-////        picasso = Picasso.get()
-////
-////        try {
-////            Picasso.setSingletonInstance(picasso)
-////        } catch (exception: Exception) {
-////            // Picasso instance was already set
-////            Log.e(TAG, exception.message)
-////        }
-//
-//        picasso.isLoggingEnabled = true
-//        picasso.setIndicatorsEnabled(true)
+        viewModel = ViewModelProvider(this).get(MainViewModel::class.java)
+
+        picasso = initPicassoWithDiskCache(this, viewModel)
+
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
+        binding.viewModel = viewModel
+        binding.lifecycleOwner = this
+
+        binding.placeholder.getViewTreeObserver().addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                viewModel.updateScreenSize(binding.placeholder.measuredWidth, binding.placeholder.measuredHeight)
+                binding.placeholder.getViewTreeObserver().removeOnGlobalLayoutListener(this)
+            }
+        })
+
+
+        viewModel.error.observe(this, Observer { errorMessage ->
+            if (errorMessage != null) {
+                showSnackbar(errorMessage)
+                viewModel.error.postValue(null)
+            }
+        })
+
+        viewModel.loadFromNetwork.observe(this, Observer { fromNetwork ->
+            if (fromNetwork != null) {
+                loadImage(fromNetwork)
+            }
+        })
     }
 
     override fun onResume() {
         super.onResume()
-        loadFromCache()
+
+        viewModel.onResumeActivity()
+    }
+
+    private fun showSnackbar(message: Int) {
+        val snackbar = Snackbar.make(binding.container, message, Snackbar.LENGTH_SHORT);
+        snackbar.show();
     }
 
 
-    private fun loadFromCache() {
-        Picasso.get().load("https://picsum.photos/200/300")
+    private fun loadImage(fromNetwork: Boolean) {
+        picasso.load(viewModel.imageUrl)
             .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
-            .networkPolicy(NetworkPolicy.OFFLINE)
-//            .placeholder(R.drawable.ic_launcher_foreground)
-            .into(binding.placeholder)
-    }
-
-    private fun loadFromNetwork() {
-        Picasso.get().load("https://picsum.photos/200/300")
-            .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
-            .networkPolicy(NetworkPolicy.NO_CACHE)
+            .networkPolicy(if (fromNetwork) NetworkPolicy.NO_CACHE else NetworkPolicy.OFFLINE)
             .into(binding.placeholder, object: Callback {
                 override fun onSuccess() {
+                    viewModel.loadFromNetwork.postValue(null)
                 }
 
                 override fun onError(e: Exception?) {
-                    // not displayed...
-                    Log.e("loadnetwork", "error")
-                  //  loadFromCache()
+                    viewModel.loadFromNetwork.postValue(null)
                 }
+
             })
     }
-
-    fun onClickNewKitten(view: View) {
-        loadFromNetwork()
-//
-//        picasso
-//            .load("https://picsum.photos/200/300")
-////            .load("https://placekitten.com/200/300/")
-//            .memoryPolicy(MemoryPolicy.NO_CACHE)
-//            .networkPolicy(NetworkPolicy.NO_STORE, NetworkPolicy.NO_CACHE)
-//            //.placeholder(R.drawable.ic_launcher_foreground)
-////            .resize(300, 300)
-////            .centerInside()
-//            .into(binding.placeholder)
-    }
 }
-

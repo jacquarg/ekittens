@@ -12,7 +12,7 @@ import okhttp3.Response
 private const val IMAGE_CACHE_SIZE: Long = 10 * 1024 * 1024
 private const val IMAGE_CACHE_MAX_AGE = 60 * 60 * 24 * 365
 
-fun initPicassoWithDiskCache(context: Context) {
+fun initPicassoWithDiskCache(context: Context, listener: Picasso.Listener): Picasso {
 
     val httpClient = OkHttpClient.Builder()
         .addNetworkInterceptor(Interceptor { chain ->
@@ -29,10 +29,6 @@ fun initPicassoWithDiskCache(context: Context) {
     val imageBuilder = Picasso.Builder(context.applicationContext)
         .loggingEnabled(true)
         .downloader(OkHttp3Downloader(httpClient))
-        .listener { _, uri, exception ->
-            // --> displayed
-            Log.e("toto", "Failed to load image: ${uri.path} because of ${exception.message}")
-        }
-
-    Picasso.setSingletonInstance(imageBuilder.build())
+        .listener(listener)
+    return imageBuilder.build()
 }
