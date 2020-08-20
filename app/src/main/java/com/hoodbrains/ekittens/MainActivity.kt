@@ -14,7 +14,9 @@ import com.squareup.picasso.NetworkPolicy
 import com.squareup.picasso.Picasso
 import java.lang.Exception
 
-
+/**
+ * Main activity of the application, which display the images on demand.
+ */
 class MainActivity : AppCompatActivity() {
 
     lateinit var binding: ActivityMainBinding
@@ -62,12 +64,20 @@ class MainActivity : AppCompatActivity() {
         viewModel.onResumeActivity()
     }
 
+    /**
+     * Display an error message through a snackbar.
+     * @param message the resourceId of the message to display.
+     */
     private fun showSnackbar(message: Int) {
         val snackbar = Snackbar.make(binding.container, message, Snackbar.LENGTH_SHORT);
         snackbar.show();
     }
 
 
+    /**
+     * Load an image and display it in the placeholder. If [fromNetwork] is true, fetch it from
+     * network, else, fetch it from the disk cache.
+     */
     private fun loadImage(fromNetwork: Boolean) {
         picasso.load(viewModel.imageUrl)
             .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
